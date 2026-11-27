@@ -35,10 +35,10 @@ describe("자동 릴리스 하네스", () => {
         publish: {
           provider: "github",
           owner: "apg0001",
-          repo: "AI_Agent_Usage_Widget_for_MAC"
+          repo: "AI_Agent_Usage_Widget"
         }
       }
-    })).toEqual({ owner: "apg0001", repo: "AI_Agent_Usage_Widget_for_MAC" });
+    })).toEqual({ owner: "apg0001", repo: "AI_Agent_Usage_Widget" });
   });
 
   it("updater feed를 파싱하고 원격용 안전한 파일명으로 바꾼다", () => {

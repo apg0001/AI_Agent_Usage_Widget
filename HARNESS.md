@@ -14,8 +14,8 @@
 ## 공통 준비
 
 ```bash
-git clone https://github.com/apg0001/AI_Agent_Usage_Widget_for_MAC.git
-cd AI_Agent_Usage_Widget_for_MAC
+git clone https://github.com/apg0001/AI_Agent_Usage_Widget.git
+cd AI_Agent_Usage_Widget
 git switch develop
 npm install
 ```
@@ -139,8 +139,8 @@ Apple Developer 인증서로 서명하고 공증하기 전까지 macOS 자동 �
 Windows PowerShell에서:
 
 ```powershell
-git clone https://github.com/apg0001/AI_Agent_Usage_Widget_for_MAC.git
-cd AI_Agent_Usage_Widget_for_MAC
+git clone https://github.com/apg0001/AI_Agent_Usage_Widget.git
+cd AI_Agent_Usage_Widget
 git switch develop
 npm install
 npm run verify
@@ -164,8 +164,8 @@ npm run package
 Linux 터미널에서:
 
 ```bash
-git clone https://github.com/apg0001/AI_Agent_Usage_Widget_for_MAC.git
-cd AI_Agent_Usage_Widget_for_MAC
+git clone https://github.com/apg0001/AI_Agent_Usage_Widget.git
+cd AI_Agent_Usage_Widget
 git switch develop
 npm install
 npm run verify

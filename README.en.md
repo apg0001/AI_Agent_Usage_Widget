@@ -76,13 +76,13 @@ Sign-in state is re-detected from each CLI's saved session, so it persists acros
 
 ## Install and run
 
-Grab the installer for your OS from the [Releases page](https://github.com/apg0001/AI_Agent_Usage_Widget_for_MAC/releases/latest) and install it directly (Windows: `GigaCharge Setup *.exe`, or the portable `GigaCharge *.exe`). On Windows/Linux, the app checks for and offers new versions automatically from Settings > Updates after install.
+Grab the installer for your OS from the [Releases page](https://github.com/apg0001/AI_Agent_Usage_Widget/releases/latest) and install it directly (Windows: `GigaCharge Setup *.exe`, or the portable `GigaCharge *.exe`). On Windows/Linux, the app checks for and offers new versions automatically from Settings > Updates after install.
 
 To run or build it yourself instead, clone the repo and start it in dev mode.
 
 ```bash
-git clone https://github.com/apg0001/AI_Agent_Usage_Widget_for_MAC.git
-cd AI_Agent_Usage_Widget_for_MAC
+git clone https://github.com/apg0001/AI_Agent_Usage_Widget.git
+cd AI_Agent_Usage_Widget
 npm install
 npm run dev
 ```
@@ -101,7 +101,7 @@ Before building, you can verify the repo is in a clean, working state with `npm 
 
 ## Suggesting changes
 
-If there's something you'd like fixed or a feature you'd like added, let us know via an [issue](https://github.com/apg0001/AI_Agent_Usage_Widget_for_MAC/issues) or send a PR. When sending a PR, please follow the branch/commit conventions in [CONTRIBUTING.md](CONTRIBUTING.md).
+If there's something you'd like fixed or a feature you'd like added, let us know via an [issue](https://github.com/apg0001/AI_Agent_Usage_Widget/issues) or send a PR. When sending a PR, please follow the branch/commit conventions in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

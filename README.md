@@ -76,13 +76,13 @@ GigaCharge는 토큰이나 요청 수를 자체적으로 세지 않습니다. �
 
 ## 설치 및 실행
 
-[Releases 페이지](https://github.com/apg0001/AI_Agent_Usage_Widget_for_MAC/releases/latest)에서 운영체제에 맞는 설치 파일을 받아 바로 설치할 수 있습니다(Windows: `GigaCharge Setup *.exe` 또는 portable `GigaCharge *.exe`). Windows/Linux는 설치 후 설정 > 업데이트에서 새 버전을 자동으로 안내합니다.
+[Releases 페이지](https://github.com/apg0001/AI_Agent_Usage_Widget/releases/latest)에서 운영체제에 맞는 설치 파일을 받아 바로 설치할 수 있습니다(Windows: `GigaCharge Setup *.exe` 또는 portable `GigaCharge *.exe`). Windows/Linux는 설치 후 설정 > 업데이트에서 새 버전을 자동으로 안내합니다.
 
 직접 실행하거나 빌드하고 싶다면 저장소를 받아 개발 모드로 실행할 수 있습니다.
 
 ```bash
-git clone https://github.com/apg0001/AI_Agent_Usage_Widget_for_MAC.git
-cd AI_Agent_Usage_Widget_for_MAC
+git clone https://github.com/apg0001/AI_Agent_Usage_Widget.git
+cd AI_Agent_Usage_Widget
 npm install
 npm run dev
 ```
@@ -101,7 +101,7 @@ npm run dev
 
 ## 수정 제안
 
-고치고 싶은 부분이나 추가하고 싶은 기능이 있다면 [이슈](https://github.com/apg0001/AI_Agent_Usage_Widget_for_MAC/issues)로 알려주시거나 PR로 보내주세요. PR을 보낼 때는 [CONTRIBUTING.md](CONTRIBUTING.md)의 브랜치·커밋 규칙을 참고해 주세요.
+고치고 싶은 부분이나 추가하고 싶은 기능이 있다면 [이슈](https://github.com/apg0001/AI_Agent_Usage_Widget/issues)로 알려주시거나 PR로 보내주세요. PR을 보낼 때는 [CONTRIBUTING.md](CONTRIBUTING.md)의 브랜치·커밋 규칙을 참고해 주세요.
 
 ## 라이선스
 
