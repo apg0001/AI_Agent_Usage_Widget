@@ -184,6 +184,7 @@ export type Translations = {
     minutesOnly: (minutes: number) => string;
     limitFallback: string;
     weeklyLimit: string;
+    fableWeeklyLimit: string;
     dayLimit: (n: number) => string;
     hourLimit: (n: number) => string;
     minuteLimit: (n: number) => string;
@@ -537,6 +538,7 @@ const ko: Translations = {
     minutesOnly: (minutes) => `${minutes}분`,
     limitFallback: "한도",
     weeklyLimit: "주간 한도",
+    fableWeeklyLimit: "Fable 주간 한도",
     dayLimit: (n) => `${n}일 한도`,
     hourLimit: (n) => `${n}시간 한도`,
     minuteLimit: (n) => `${n}분 한도`,
@@ -883,6 +885,7 @@ const en: Translations = {
     minutesOnly: (minutes) => `${minutes}m`,
     limitFallback: "Limit",
     weeklyLimit: "Weekly limit",
+    fableWeeklyLimit: "Fable weekly limit",
     dayLimit: (n) => `${n}-day limit`,
     hourLimit: (n) => `${n}-hour limit`,
     minuteLimit: (n) => `${n}-minute limit`,

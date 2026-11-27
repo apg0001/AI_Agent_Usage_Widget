@@ -309,3 +309,68 @@ describe("Claude 사용량 폴링", () => {
     expect(parseRetryAfterMs("invalid", now)).toBeUndefined();
   });
 });
+
+function jsonResponse(body: unknown) {
+  return new globalThis.Response(JSON.stringify(body), {
+    status: 200,
+    headers: { "Content-Type": "application/json" }
+  });
+}
+
+describe("Claude Fable 주간 한도", () => {
+  // Mirrors the live response shape observed in 2026-11: five_hour is null and
+  // model-scoped limits arrive in limits[] next to the overall weekly entry.
+  const liveShape = {
+    five_hour: null,
+    seven_day: { utilization: 88, resets_at: "2026-08-16T03:00:00.000Z" },
+    seven_day_opus: null,
+    seven_day_sonnet: null,
+    limits: [
+      { kind: "weekly", group: "all_models", percent: 88, severity: "warning", resets_at: "2026-08-16T03:00:00.000Z", scope: null, is_active: false },
+      { kind: "weekly", group: "model", percent: 100, severity: "critical", resets_at: "2026-08-15T03:00:00.000Z", scope: { model: "claude-fable-5-2" }, is_active: true }
+    ],
+    weekly_scoped_shares: [{ limit_index: 1, used_percent_of_weekly: 50, allowance_percent_of_weekly: 50 }]
+  };
+
+  it("limits[]에서 Fable 항목을 찾아 별도 주간 한도로 표시한다", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(liveShape)));
+    const { fetchUsageSnapshot } = await loadUsageProviders();
+
+    const [claude] = await fetchUsageSnapshot(claudeOnlySettings);
+
+    expect(claude.percent).toBe(88);
+    expect(claude.windows?.map((window) => window.id)).toEqual(["primary", "weekly", "fable"]);
+    const fable = claude.windows?.find((window) => window.id === "fable");
+    expect(fable).toMatchObject({
+      label: "Fable 주간 한도",
+      percent: 100,
+      available: true,
+      resetsAt: "2026-08-15T03:00:00.000Z",
+      windowDurationMinutes: 7 * 24 * 60
+    });
+    expect(fable?.resetRemaining).toBeTruthy();
+  });
+
+  it("Fable 한도가 없으면 기존 두 한도만 표시한다", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(usageResponse(30)));
+    const { fetchUsageSnapshot } = await loadUsageProviders();
+
+    const [claude] = await fetchUsageSnapshot(claudeOnlySettings);
+
+    expect(claude.windows?.map((window) => window.id)).toEqual(["primary", "weekly"]);
+  });
+
+  it("전용 seven_day_*fable* 키와 limits[] 서술 필드 어디에서든 Fable을 찾는다", async () => {
+    const { findClaudeFableLimit } = await loadUsageProviders();
+
+    expect(findClaudeFableLimit({ seven_day_fable: { utilization: 42, resets_at: "2026-08-16T03:00:00.000Z" } }))
+      .toEqual({ percent: 42, resetsAt: "2026-08-16T03:00:00.000Z" });
+    expect(findClaudeFableLimit({ seven_day_fable: null })).toBeNull();
+    expect(findClaudeFableLimit({ limits: [{ kind: "weekly_fable", percent: 12 }] })).toEqual({ percent: 12, resetsAt: undefined });
+    expect(findClaudeFableLimit({ limits: [{ group: "Claude Fable", percent: 7, resets_at: "x" }] })).toEqual({ percent: 7, resetsAt: "x" });
+    expect(findClaudeFableLimit({ limits: [{ kind: "weekly", group: "opus", percent: 50 }] })).toBeNull();
+    expect(findClaudeFableLimit({ limits: [{ kind: "fable", percent: null }] })).toBeNull();
+    expect(findClaudeFableLimit(null)).toBeNull();
+    expect(findClaudeFableLimit({ limits: "fable" })).toBeNull();
+  });
+});

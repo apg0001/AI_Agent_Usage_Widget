@@ -926,6 +926,61 @@ export function parseRetryAfterMs(value: string | null, now = Date.now()) {
   return Math.max(0, retryAt - now);
 }
 
+const FABLE_NAME_PATTERN = /fable/i;
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function mentionsFable(value: unknown, depth = 0): boolean {
+  if (depth > 4) {
+    return false;
+  }
+  if (typeof value === "string") {
+    return FABLE_NAME_PATTERN.test(value);
+  }
+  if (Array.isArray(value)) {
+    return value.some((item) => mentionsFable(item, depth + 1));
+  }
+  if (isPlainRecord(value)) {
+    return Object.entries(value).some(([key, item]) => FABLE_NAME_PATTERN.test(key) || mentionsFable(item, depth + 1));
+  }
+  return false;
+}
+
+/**
+ * Claude reports model-scoped weekly limits (such as Fable) separately from the
+ * overall weekly limit. The response names them with opaque keys that change
+ * over time, so look for the Fable name instead of a fixed field: either a
+ * dedicated `seven_day_*fable*` window, or a `limits[]` entry whose descriptors
+ * (kind, group, scope, ...) mention Fable.
+ */
+export function findClaudeFableLimit(data: unknown): { percent: number; resetsAt?: string } | null {
+  if (!isPlainRecord(data)) {
+    return null;
+  }
+
+  for (const [key, value] of Object.entries(data)) {
+    if (/^seven_day_/i.test(key) && FABLE_NAME_PATTERN.test(key) && isPlainRecord(value) && typeof value.utilization === "number") {
+      return { percent: value.utilization, resetsAt: typeof value.resets_at === "string" ? value.resets_at : undefined };
+    }
+  }
+
+  if (Array.isArray(data.limits)) {
+    for (const item of data.limits) {
+      if (!isPlainRecord(item) || typeof item.percent !== "number" || !Number.isFinite(item.percent)) {
+        continue;
+      }
+      const { percent, resets_at: resetsAt, ...descriptors } = item;
+      if (mentionsFable(descriptors)) {
+        return { percent, resetsAt: typeof resetsAt === "string" ? resetsAt : undefined };
+      }
+    }
+  }
+
+  return null;
+}
+
 async function fetchClaudeUsage(accessToken: string, language: Language): Promise<UsageResult> {
   const response = await fetch("https://api.anthropic.com/api/oauth/usage", {
     signal: globalThis.AbortSignal.timeout(CLAUDE_REQUEST_TIMEOUT_MS),
@@ -946,8 +1001,8 @@ async function fetchClaudeUsage(accessToken: string, language: Language): Promis
   }
 
   const data = (await response.json()) as {
-    five_hour?: { utilization?: number; resets_at?: string };
-    seven_day?: { utilization?: number; resets_at?: string };
+    five_hour?: { utilization?: number; resets_at?: string } | null;
+    seven_day?: { utilization?: number; resets_at?: string } | null;
     subscription_type?: string;
   };
   const window = data.five_hour ?? data.seven_day;
@@ -957,6 +1012,7 @@ async function fetchClaudeUsage(accessToken: string, language: Language): Promis
 
   const t = getTranslations(language);
   const percent = Math.round(window.utilization);
+  const fableLimit = findClaudeFableLimit(data);
   return withReset({
     used: percent,
     limit: 100,
@@ -967,7 +1023,7 @@ async function fetchClaudeUsage(accessToken: string, language: Language): Promis
     source: "api" as const,
     connectionStatus: "connected" as const,
     dataUpdatedAt: new Date().toISOString(),
-    windows: ensureLimitWindows([
+    windows: [...ensureLimitWindows([
       data.five_hour && typeof data.five_hour.utilization === "number"
         ? createWindow({
             id: "primary",
@@ -988,7 +1044,16 @@ async function fetchClaudeUsage(accessToken: string, language: Language): Promis
             windowDurationMinutes: 7 * 24 * 60
           }, language)
         : null
-    ].filter(isUsageWindow), language),
+    ].filter(isUsageWindow), language), ...(fableLimit
+      ? [createWindow({
+          id: "fable",
+          label: t.usage.fableWeeklyLimit,
+          percent: fableLimit.percent,
+          resetsAt: fableLimit.resetsAt,
+          dataUpdatedAt: new Date().toISOString(),
+          windowDurationMinutes: 7 * 24 * 60
+        }, language)]
+      : [])],
     planLabel: formatPlanLabel(data.subscription_type),
     message: undefined
   }, language);
