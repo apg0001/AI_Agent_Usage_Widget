@@ -8,6 +8,7 @@ import {
   parseAntigravityCredential
 } from "./antigravityCredential.js";
 import { ClaudeCredential, ClaudeCredentialUpdate, PlatformAdapter } from "./types.js";
+import { ClaudeKeychainCandidate, pickFreshestClaudeCredential } from "./claudeKeychainSelection.js";
 
 const KEYCHAIN_READ_INTERVAL_MS = 60_000;
 
@@ -96,6 +97,10 @@ function readClaudeKeychainCredential(): ClaudeCredential | null {
     return keychainCredentialCache.value;
   }
 
+  const candidates: Array<ClaudeKeychainCandidate<{
+    value: ClaudeCredential;
+    source: KeychainItem & { encoding: "json" | "hex" };
+  }>> = [];
   for (const item of listClaudeKeychainItems()) {
     try {
       const raw = execFileSync(
@@ -110,32 +115,38 @@ function readClaudeKeychainCredential(): ClaudeCredential | null {
       const decoded = decodeClaudeCredential(raw);
       const token = decoded?.envelope.claudeAiOauth?.accessToken ?? decoded?.envelope.accessToken;
       if (decoded && token) {
-        const value = {
-          accessToken: token,
-          refreshToken: decoded.envelope.claudeAiOauth?.refreshToken ?? decoded.envelope.refreshToken,
-          refreshTokenExpiresAt:
-            decoded.envelope.claudeAiOauth?.refreshTokenExpiresAt ?? decoded.envelope.refreshTokenExpiresAt,
-          organizationUuid: decoded.envelope.organizationUuid,
-          subscriptionType: decoded.envelope.claudeAiOauth?.subscriptionType ?? decoded.envelope.subscriptionType
-        };
-        keychainCredentialCache = {
-          expiresAt: Date.now() + KEYCHAIN_READ_INTERVAL_MS,
-          value,
-          source: { account: item.account, service: item.service, encoding: decoded.encoding }
-        };
-        return value;
+        candidates.push({
+          value: {
+            value: {
+              accessToken: token,
+              refreshToken: decoded.envelope.claudeAiOauth?.refreshToken ?? decoded.envelope.refreshToken,
+              refreshTokenExpiresAt:
+                decoded.envelope.claudeAiOauth?.refreshTokenExpiresAt ?? decoded.envelope.refreshTokenExpiresAt,
+              organizationUuid: decoded.envelope.organizationUuid,
+              subscriptionType: decoded.envelope.claudeAiOauth?.subscriptionType ?? decoded.envelope.subscriptionType
+            },
+            source: { account: item.account, service: item.service, encoding: decoded.encoding }
+          },
+          expiresAt: decoded.envelope.claudeAiOauth?.expiresAt ?? envelopeExpiresAt(decoded.envelope)
+        });
       }
     } catch {
       continue;
     }
   }
 
+  const selected = pickFreshestClaudeCredential(candidates);
   keychainCredentialCache = {
     expiresAt: Date.now() + KEYCHAIN_READ_INTERVAL_MS,
-    value: null,
-    source: null
+    value: selected?.value ?? null,
+    source: selected?.source ?? null
   };
-  return null;
+  return selected?.value ?? null;
+}
+
+function envelopeExpiresAt(envelope: ClaudeKeychainEnvelope): number | string | undefined {
+  const value = envelope.expiresAt;
+  return typeof value === "number" || typeof value === "string" ? value : undefined;
 }
 
 function writeToKeychainItem(item: KeychainItem, update: ClaudeCredentialUpdate) {
