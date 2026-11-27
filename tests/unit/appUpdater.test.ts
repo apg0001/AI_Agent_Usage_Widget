@@ -27,9 +27,31 @@ const shellMock = vi.hoisted(() => ({
   showItemInFolder: vi.fn()
 }));
 
+const appMock = vi.hoisted(() => ({
+  exePath: "/Applications/GigaCharge.app/Contents/MacOS/GigaCharge",
+  quit: vi.fn()
+}));
+
+const selfInstallMock = vi.hoisted(() => ({
+  launchDetachedInstaller: vi.fn(),
+  hasPkexec: vi.fn(() => false),
+  takeSelfInstallResult: vi.fn(() => null as null | { status: "installed" | "failed"; code: string; version: string })
+}));
+
 vi.mock("electron", () => ({
-  app: { isPackaged: true },
+  app: {
+    isPackaged: true,
+    getPath: (name: string) => (name === "exe" ? appMock.exePath : "/tmp/gigacharge-test-user-data"),
+    quit: appMock.quit
+  },
   shell: shellMock
+}));
+
+vi.mock("../../src/main/selfInstaller", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../src/main/selfInstaller")>()),
+  launchDetachedInstaller: selfInstallMock.launchDetachedInstaller,
+  hasPkexec: selfInstallMock.hasPkexec,
+  takeSelfInstallResult: selfInstallMock.takeSelfInstallResult
 }));
 
 vi.mock("electron-updater", () => ({
@@ -53,6 +75,11 @@ describe("앱 업데이트 오류 경계", () => {
     updaterMock.autoUpdater.autoDownload = false;
     updaterMock.autoUpdater.autoInstallOnAppQuit = false;
     shellMock.showItemInFolder.mockClear();
+    appMock.exePath = "/Applications/GigaCharge.app/Contents/MacOS/GigaCharge";
+    appMock.quit.mockClear();
+    selfInstallMock.launchDetachedInstaller.mockReset();
+    selfInstallMock.hasPkexec.mockReset().mockReturnValue(false);
+    selfInstallMock.takeSelfInstallResult.mockReset().mockReturnValue(null);
   });
 
   afterEach(() => {
@@ -150,11 +177,115 @@ describe("앱 업데이트 오류 경계", () => {
     expect(updaterMock.quitAndInstall).toHaveBeenCalledTimes(1);
   });
 
-  it("macOS는 미서명 빌드라 자동 설치를 끄고 다운로드된 zip 경로만 안내한다", async () => {
+  it("macOS는 승인하면 앱 밖의 도우미가 받아둔 zip으로 번들을 교체한다", async () => {
     Object.defineProperty(process, "platform", {
       configurable: true,
       value: "darwin"
     });
+
+    const updater = await import("../../src/main/appUpdater");
+    const { MAC_INSTALL_SCRIPT } = await import("../../src/main/selfInstaller");
+    const listener = vi.fn();
+    updater.onUpdateStatusChange(listener);
+    updater.initAutoUpdate();
+
+    // Squirrel.Mac은 미서명 번들을 거부하므로 앱 종료 시 자동 설치는 계속 끈다.
+    expect(updaterMock.autoUpdater.autoInstallOnAppQuit).toBe(false);
+
+    updaterMock.handlers.get("update-downloaded")?.({
+      version: "0.9.0",
+      downloadedFile: "/tmp/update.zip"
+    });
+    expect(listener).toHaveBeenLastCalledWith({ state: "downloaded", version: "0.9.0", selfInstall: true });
+
+    updater.quitAndInstallUpdate();
+    expect(selfInstallMock.launchDetachedInstaller).toHaveBeenCalledWith(MAC_INSTALL_SCRIPT, [
+      String(process.pid),
+      "/tmp/update.zip",
+      "/Applications/GigaCharge.app",
+      "com.apg0001.aiusagewidget",
+      "/tmp/gigacharge-test-user-data/update-install-result.json",
+      "1",
+      "0.9.0"
+    ]);
+    expect(appMock.quit).toHaveBeenCalledTimes(1);
+    expect(updaterMock.quitAndInstall).not.toHaveBeenCalled();
+  });
+
+  it("macOS에서 도우미를 띄우지 못하면 zip 위치 안내로 돌아간다", async () => {
+    Object.defineProperty(process, "platform", {
+      configurable: true,
+      value: "darwin"
+    });
+    selfInstallMock.launchDetachedInstaller.mockImplementation(() => {
+      throw new Error("spawn failed");
+    });
+
+    const updater = await import("../../src/main/appUpdater");
+    updater.initAutoUpdate();
+    updaterMock.handlers.get("update-downloaded")?.({ version: "0.9.0", downloadedFile: "/tmp/update.zip" });
+
+    updater.quitAndInstallUpdate();
+    expect(appMock.quit).not.toHaveBeenCalled();
+    expect(updater.getLatestUpdateStatus()).toMatchObject({
+      state: "downloaded",
+      version: "0.9.0",
+      manualInstallPath: "/tmp/update.zip",
+      autoInstallFailed: true
+    });
+  });
+
+  it("이전 도우미 설치가 실패한 버전은 다시 자동 설치를 권하지 않는다", async () => {
+    Object.defineProperty(process, "platform", {
+      configurable: true,
+      value: "darwin"
+    });
+    selfInstallMock.takeSelfInstallResult.mockReturnValue({ status: "failed", code: "replace", version: "0.9.0" });
+
+    const updater = await import("../../src/main/appUpdater");
+    updater.initAutoUpdate();
+    updaterMock.handlers.get("update-downloaded")?.({ version: "0.9.0", downloadedFile: "/tmp/update.zip" });
+    expect(updater.getLatestUpdateStatus()).toMatchObject({ manualInstallPath: "/tmp/update.zip", autoInstallFailed: true });
+
+    updaterMock.handlers.get("update-downloaded")?.({ version: "0.9.1", downloadedFile: "/tmp/update.zip" });
+    expect(updater.getLatestUpdateStatus()).toEqual({ state: "downloaded", version: "0.9.1", selfInstall: true });
+  });
+
+  it("Linux deb는 pkexec가 있으면 도우미로 설치하고 앱을 다시 띄운다", async () => {
+    Object.defineProperty(process, "platform", {
+      configurable: true,
+      value: "linux"
+    });
+    delete process.env.APPIMAGE;
+    selfInstallMock.hasPkexec.mockReturnValue(true);
+    appMock.exePath = "/opt/GigaCharge/quota-bar";
+
+    const updater = await import("../../src/main/appUpdater");
+    const { LINUX_INSTALL_SCRIPT } = await import("../../src/main/selfInstaller");
+    updater.initAutoUpdate();
+    updaterMock.handlers.get("update-downloaded")?.({ version: "0.9.0", downloadedFile: "/tmp/quota-bar_0.9.0_amd64.deb" });
+    expect(updater.getLatestUpdateStatus()).toEqual({ state: "downloaded", version: "0.9.0", selfInstall: true });
+
+    updater.quitAndInstallUpdate();
+    expect(selfInstallMock.launchDetachedInstaller).toHaveBeenCalledWith(LINUX_INSTALL_SCRIPT, [
+      String(process.pid),
+      "/tmp/quota-bar_0.9.0_amd64.deb",
+      "deb",
+      "/opt/GigaCharge/quota-bar",
+      "/tmp/gigacharge-test-user-data/update-install-result.json",
+      "1",
+      "0.9.0",
+      "300"
+    ]);
+    expect(appMock.quit).toHaveBeenCalledTimes(1);
+  });
+
+  it("macOS 번들을 교체할 수 없는 위치(디스크 이미지)면 zip 경로만 안내한다", async () => {
+    Object.defineProperty(process, "platform", {
+      configurable: true,
+      value: "darwin"
+    });
+    appMock.exePath = "/Volumes/GigaCharge/GigaCharge.app/Contents/MacOS/GigaCharge";
 
     const updater = await import("../../src/main/appUpdater");
     const listener = vi.fn();

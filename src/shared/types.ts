@@ -194,6 +194,8 @@ export type UpdateStatus = {
   message?: string;
   manualInstallCommand?: string;
   manualInstallPath?: string;
+  autoInstallFailed?: boolean;
+  selfInstall?: boolean;
 } | {
   state: "error";
   errorCode: UpdateErrorCode;

@@ -76,7 +76,7 @@ GigaCharge는 토큰이나 요청 수를 자체적으로 세지 않습니다. �
 
 ## 설치 및 실행
 
-[Releases 페이지](https://github.com/apg0001/AI_Agent_Usage_Widget/releases/latest)에서 운영체제에 맞는 설치 파일을 받아 바로 설치할 수 있습니다(Windows: `GigaCharge Setup *.exe` 또는 portable `GigaCharge *.exe`). Windows/Linux는 설치 후 설정 > 업데이트에서 새 버전을 자동으로 안내합니다.
+[Releases 페이지](https://github.com/apg0001/AI_Agent_Usage_Widget/releases/latest)에서 운영체제에 맞는 설치 파일을 받아 바로 설치할 수 있습니다(Windows: `GigaCharge Setup *.exe` 또는 portable `GigaCharge *.exe`). 설치 후에는 설정 > 업데이트에서 새 버전을 자동으로 받아 두고, 설치 버튼을 누르면 앱이 다시 열리면서 새 버전이 적용됩니다. macOS와 Linux 패키지는 설치 중에 관리자 암호를 물을 수 있습니다.
 
 직접 실행하거나 빌드하고 싶다면 저장소를 받아 개발 모드로 실행할 수 있습니다.
 

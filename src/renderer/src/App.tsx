@@ -1483,6 +1483,9 @@ function SettingsView({
           ) : updateStatusText(t, updateStatus) ? (
             <p className="update-status" role="status">{updateStatusText(t, updateStatus)}</p>
           ) : null}
+          {updateStatus.state === "downloaded" && updateStatus.autoInstallFailed ? (
+            <p className="update-status" role="alert">{t.updates.autoInstallFailedNote}</p>
+          ) : null}
           {updateStatus.state === "downloaded" && updateStatus.manualInstallCommand ? (
             <div className="manual-update-install">
               <p>
@@ -1523,10 +1526,13 @@ function SettingsView({
               </button>
             </div>
           ) : updateStatus.state === "downloaded" ? (
-            <button className="primary-button full-button" type="button" onClick={onInstallUpdate}>
-              <RefreshCw size={15} aria-hidden="true" />
-              {t.updates.restartAndInstall}
-            </button>
+            <>
+              <button className="primary-button full-button" type="button" onClick={onInstallUpdate}>
+                <RefreshCw size={15} aria-hidden="true" />
+                {t.updates.restartAndInstall}
+              </button>
+              {updateStatus.selfInstall ? <small className="update-status">{t.updates.selfInstallHint}</small> : null}
+            </>
           ) : (
             <button
               className="secondary-button full-button"

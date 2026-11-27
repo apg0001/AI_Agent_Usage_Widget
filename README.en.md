@@ -76,7 +76,7 @@ Sign-in state is re-detected from each CLI's saved session, so it persists acros
 
 ## Install and run
 
-Grab the installer for your OS from the [Releases page](https://github.com/apg0001/AI_Agent_Usage_Widget/releases/latest) and install it directly (Windows: `GigaCharge Setup *.exe`, or the portable `GigaCharge *.exe`). On Windows/Linux, the app checks for and offers new versions automatically from Settings > Updates after install.
+Grab the installer for your OS from the [Releases page](https://github.com/apg0001/AI_Agent_Usage_Widget/releases/latest) and install it directly (Windows: `GigaCharge Setup *.exe`, or the portable `GigaCharge *.exe`). After install, the app downloads new versions in the background. Click install in Settings > Updates and the app reopens on the new version. On macOS and Linux packages, you may be asked for your administrator password during the install.
 
 To run or build it yourself instead, clone the repo and start it in dev mode.
 

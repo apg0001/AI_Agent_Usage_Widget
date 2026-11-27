@@ -132,7 +132,17 @@ npm run package
 - `dist/latest-mac.yml`
 - `dist/mac-<arch>/GigaCharge.app`
 
-Apple Developer 인증서로 서명하고 공증하기 전까지 macOS 자동 업데이트는 활성화하지 않습니다. 서명되지 않은 산출물은 다운로드·수동 설치 검증 용도로만 취급합니다.
+macOS 빌드는 Apple Developer 인증서로 서명·공증하지 않으므로 electron-updater의 Squirrel.Mac 설치 단계(`autoInstallOnAppQuit`, `quitAndInstall`)는 쓰지 않습니다. 대신 승인형 자체 설치를 씁니다(`src/main/selfInstaller.ts`).
+
+- electron-updater가 zip을 받아 `latest-mac.yml`의 SHA-512로 검증합니다.
+- 사용자가 설정 > 업데이트에서 설치를 누르면 앱이 분리된 도우미 스크립트를 띄우고 종료합니다.
+- 도우미는 앱 종료를 기다린 뒤 zip을 풀고, 번들 ID(`com.apg0001.aiusagewidget`)와 버전이 릴리스와 같은지 확인합니다. 그다음 기존 번들을 백업해 두고 교체한 뒤 앱을 다시 엽니다. 설치 위치에 쓰기 권한이 없으면 macOS 관리자 승인 창을 띄웁니다.
+- 실패하면 백업한 번들로 되돌리고 이전 앱을 다시 엽니다. 결과는 userData의 `update-install-result.json`에 남고, 같은 버전에는 수동 설치(zip 위치 안내)만 제안합니다.
+- 디스크 이미지나 App Translocation 경로에서 실행 중이면 교체할 수 없으므로 처음부터 수동 설치를 안내합니다.
+
+Linux deb·rpm·pacman 설치본도 같은 방식으로 도우미가 `pkexec`(polkit 인증 창)를 실행합니다. 인증 에이전트가 응답하지 않으면 300초 뒤 포기하고 앱을 다시 띄우며, 수동 설치 명령을 안내합니다. `pkexec`가 없으면 처음부터 수동 명령을 안내합니다.
+
+관리자 승인 창과 polkit 인증 창은 CI에서 자동화할 수 없습니다. 도우미의 교체·검증·실패 경로는 `tests/unit/selfInstaller.test.ts`가 실제 스크립트로 확인하고, 권한 창이 뜨는 경로는 릴리스 뒤 실제 장치에서 확인합니다.
 
 ## Windows 실행 및 패키징
 
