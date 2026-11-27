@@ -89,7 +89,7 @@ function emit(status: UpdateStatus) {
 
 function emitError(error: unknown) {
   const normalized = normalizeUpdateError(error);
-  const key = `${normalized.errorCode}:${normalized.diagnosticCode}`;
+  const key = `${normalized.errorCode}:${normalized.diagnosticCode}:${normalized.causeCode ?? ""}`;
   const now = Date.now();
   if (key === lastErrorKey && now - lastErrorAt < 1_000) {
     return;

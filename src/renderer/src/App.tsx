@@ -1478,7 +1478,7 @@ function SettingsView({
               </div>
               <details className="update-error-details">
                 <summary>{t.updates.errorDetails}</summary>
-                <code>{updateStatus.diagnosticCode}</code>
+                <code>{updateStatus.causeCode ? `${updateStatus.diagnosticCode} · ${updateStatus.causeCode}` : updateStatus.diagnosticCode}</code>
               </details>
             </div>
           ) : updateStatusText(t, updateStatus) ? (

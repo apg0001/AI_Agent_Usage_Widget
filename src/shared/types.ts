@@ -200,6 +200,7 @@ export type UpdateStatus = {
   state: "error";
   errorCode: UpdateErrorCode;
   diagnosticCode: UpdateDiagnosticCode;
+  causeCode?: string;
 };
 
 export const DEFAULT_METER_COLOR_BANDS: MeterColorBand[] = [

@@ -3,6 +3,8 @@ import { UpdateDiagnosticCode, UpdateErrorCode } from "../shared/types.js";
 export type NormalizedUpdateError = {
   errorCode: UpdateErrorCode;
   diagnosticCode: UpdateDiagnosticCode;
+  /** Unclassified errors only: a constant identifier such as ENOENT, ERR_UPDATER_X, HTTP_404 or TypeError. */
+  causeCode?: string;
 };
 
 type ErrorLike = {
@@ -30,6 +32,32 @@ function classificationText(error: unknown, depth = 0): string {
     candidate.message,
     classificationText(candidate.cause, depth + 1)
   ].filter((value) => value != null).join(" ");
+}
+
+// Identifiers only: messages, paths and stacks never pass these shapes, so the
+// code is safe to show and copy even though the raw error stays private.
+const SAFE_ERROR_CODE = /^[A-Z][A-Z0-9_]{1,63}$/;
+const SAFE_ERROR_NAME = /^[A-Z][A-Za-z]{0,39}Error$/;
+
+function safeCauseCode(error: unknown, depth = 0): string | undefined {
+  if (depth > 2 || error == null || typeof error !== "object") {
+    return undefined;
+  }
+  const candidate = error as ErrorLike;
+  if (typeof candidate.code === "string" && SAFE_ERROR_CODE.test(candidate.code)) {
+    return candidate.code;
+  }
+  if (typeof candidate.statusCode === "number" && Number.isInteger(candidate.statusCode) && candidate.statusCode >= 100 && candidate.statusCode <= 599) {
+    return `HTTP_${candidate.statusCode}`;
+  }
+  const fromCause = safeCauseCode(candidate.cause, depth + 1);
+  if (fromCause) {
+    return fromCause;
+  }
+  if (typeof candidate.name === "string" && candidate.name !== "Error" && SAFE_ERROR_NAME.test(candidate.name)) {
+    return candidate.name;
+  }
+  return undefined;
 }
 
 export function normalizeUpdateError(error: unknown): NormalizedUpdateError {
@@ -73,8 +101,10 @@ export function normalizeUpdateError(error: unknown): NormalizedUpdateError {
     };
   }
 
+  const causeCode = safeCauseCode(error);
   return {
     errorCode: "unknown",
-    diagnosticCode: "UPDATE_UNKNOWN"
+    diagnosticCode: "UPDATE_UNKNOWN",
+    ...(causeCode ? { causeCode } : {})
   };
 }

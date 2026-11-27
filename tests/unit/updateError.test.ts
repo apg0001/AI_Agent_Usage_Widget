@@ -42,6 +42,22 @@ describe("업데이트 오류 정규화", () => {
     expect(serialized).not.toContain("internal.call");
   });
 
+  it("분류되지 않은 오류는 식별자 형태의 원인 코드만 함께 보여 준다", () => {
+    const fileError = Object.assign(new Error("ENOENT: no such file, open 'C:\\Users\\me\\token=abc\\app-update.yml'"), { code: "ENOENT" });
+    expect(normalizeUpdateError(fileError)).toEqual({ errorCode: "unknown", diagnosticCode: "UPDATE_UNKNOWN", causeCode: "ENOENT" });
+
+    expect(normalizeUpdateError(Object.assign(new Error("boom"), { code: "ERR_UPDATER_INVALID_UPDATE_INFO" })).causeCode)
+      .toBe("ERR_UPDATER_INVALID_UPDATE_INFO");
+    expect(normalizeUpdateError(Object.assign(new Error("teapot"), { statusCode: 418 })).causeCode).toBe("HTTP_418");
+    expect(normalizeUpdateError(new TypeError("Cannot read properties of undefined (reading 'x')")).causeCode).toBe("TypeError");
+    expect(normalizeUpdateError(new Error("wrapped", { cause: Object.assign(new Error("inner"), { code: "EBUSY" }) })).causeCode).toBe("EBUSY");
+
+    // Codes that are not plain identifiers never reach the renderer.
+    expect(normalizeUpdateError(Object.assign(new Error("x"), { code: "token=super-secret" })).causeCode).toBeUndefined();
+    expect(normalizeUpdateError(Object.assign(new Error("x"), { code: "C:\\Users\\me" })).causeCode).toBeUndefined();
+    expect(normalizeUpdateError(Object.assign(new Error("x"), { name: "Secret token abc Error" })).causeCode).toBeUndefined();
+  });
+
   it("구조화된 electron-updater 오류 코드를 문자열 메시지보다 먼저 분류한다", () => {
     const error = Object.assign(new Error("wrapped failure"), {
       code: "ERR_UPDATER_CHANNEL_FILE_NOT_FOUND"
