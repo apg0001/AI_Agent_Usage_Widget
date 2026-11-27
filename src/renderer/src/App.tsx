@@ -521,7 +521,8 @@ function ProviderCard({
   onOpen: (provider: ProviderId) => void;
 }) {
   const { t, bands } = useI18n();
-  const windows = providerWindows(usage, t).slice(0, 2);
+  // 기본 두 한도(세션·주간)는 2열로 나란히, 모델별 한도(예: Claude Fable)까지 있으면 한 줄씩 쌓는다.
+  const windows = providerWindows(usage, t).slice(0, 3);
   const shortMessage = usage.status === "signed-out" || usage.status === "error" || usage.stale ? usage.message : undefined;
   const stripeStyle = { "--stripe-color": meterColor(usage.percent, usage.status, bands) } as React.CSSProperties;
 
@@ -545,7 +546,7 @@ function ProviderCard({
         </button>
       </div>
       {shortMessage ? <p className="compact-message" title={shortMessage}>{shortMessage}</p> : null}
-      <div className="compact-windows">
+      <div className={`compact-windows${windows.length > 2 ? " compact-windows-stacked" : ""}`}>
         {windows.map((window) => <WindowMeter key={window.id} usage={usage} window={window} compact />)}
       </div>
     </article>
